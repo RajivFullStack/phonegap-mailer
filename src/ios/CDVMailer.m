@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 #import <MessageUI/MFMailComposeViewController.h>
+#import <MobileCoreServices/MobileCoreServices.h>
 #import <Cordova/CDV.h>
 
 @interface CDVMailer : CDVPlugin <MFMailComposeViewControllerDelegate> {
@@ -23,7 +24,19 @@
         [picker setSubject:subject];
     if(body != nil)
         [picker setMessageBody:body isHTML:NO];
-    // TODO: handle attachment
+    if(attachment != nil) {
+        NSData *data = [NSData dataWithContentsOfFile:attachment];
+        if(data != nil) {
+            // http://stackoverflow.com/questions/9801106/how-can-i-get-mime-type-in-ios-which-is-not-based-on-extension
+            CFStringRef pathExtension = (__bridge_retained CFStringRef)[attachment pathExtension];
+            CFStringRef type = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, pathExtension, NULL);
+            CFRelease(pathExtension);
+            NSString *mimeType = (__bridge_transfer NSString *)UTTypeCopyPreferredTagWithClass(type, kUTTagClassMIMEType);
+            if (type != NULL)
+                CFRelease(type);
+            [picker addAttachmentData:data mimeType:mimeType fileName:[attachment lastPathComponent]];
+        }
+    }
     [self.viewController presentModalViewController:picker animated:YES];
 }
 
